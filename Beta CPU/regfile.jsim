@@ -1,0 +1,38 @@
+//.include "/nominal.jsim"
+//.include "/stdcell.jsim"
+//.include "/lab5regfile.jsim"
+
+
+//R31 i.e 11111 should not be changed
+//Checking if R31 is accessed using AND gates: 1 for true, 0 for false
+.subckt check_R31 reg_addr[4:0] t_f
+Xtf0 reg_addr[4:1] t_f0 and4
+Xtf t_f0 reg_addr[0] t_f and2 
+.ends
+
+.subckt regfile clk werf ra2sel wasel ra[4:0] rb[4:0] rc[4:0]
++ wdata[31:0] radata[31:0] rbdata[31:0]
+//Check for R31
+Xcheck_ra ra[4:0] t_f_ra1 check_R31
+Xcheck_rbc ra2mux[4:0] t_f_ra2 check_R31
+
+//Forcing register data to 0 for R31
+Xra1 t_f_ra1#32 adata[31:0] 0#32 radata[31:0] mux2
+Xra2 t_f_ra2#32 bdata[31:0] 0#32 rbdata[31:0] mux2 
+
+//Choosing Rb or Rc using RA2SEL
+Xrb_rc ra2sel#5 rb[4:0] rc[4:0] ra2mux[4:0] mux2 
+
+//Exception handling
+Xwasel wasel#5 rc[4:0] vdd#4 0 waselout[4:0] mux2
+
+Xregfile
++ vdd 0 0 ra[4:0] adata[31:0]     // A read port
++ vdd 0 0 ra2mux[4:0] bdata[31:0] // B read port
++ 0 clk werf waselout[4:0] wdata[31:0]  // write port
++ $memory width=32 nlocations=31
+
+
+.ends
+
+

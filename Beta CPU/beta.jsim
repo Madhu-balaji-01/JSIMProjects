@@ -1,0 +1,56 @@
+.include "nominal.jsim"
+.include "stdcell.jsim"
+.include "lab5checkoff.jsim"
+.include "ctl.jsim"
+.include "pc.jsim"
+.include "regfile.jsim"
+
+
+.subckt beta clk reset irq ia[31:0] id[31:0] ma[31:0] moe mrd[31:0] wr mwd[31:0]
+
+//If IRQ = 1 and PC31 = 0, interrupt should occur -- beta in user mode
+Xcheckpc31 ia[31] ia31_inv inverter
+Xusermode ia31_inv irq user_mode and2
+
+//Interrupt forces the following:
+//PCSEL to 4 (select 0x80000008 as the next PC)
+//WASEL to 1 (select XP as the register file write address)
+//WERF to 1 (write into the register file) 
+//WDSEL to 0 (select PC+4 as the data to be written into the register file)
+//WR to 0 
+XPCSEL_1 user_mode#3 xpcsel[2:0] vdd 0#2 pcsel[2:0] mux2 
+XWASEL_1 user_mode   xwasel      vdd     wasel      mux2
+XWERF_1  user_mode   xwerf       vdd     werf       mux2
+XWDSEL_1 user_mode#2 xwdsel[1:0] 0#2     wdsel[1:0] mux2
+XWR_1    user_mode   xwr         0       wr         mux2
+
+//Setting ILLOP=4 and Xadr=8
+Xillop_con vdd 0#28 vdd 0#2 illop[31:0] connector
+Xxadr_con vdd 0#27 vdd 0#3 xadr[31:0] connector
+
+//ma - address from ALU
+Xma alu_out[31:0] ma[31:0] buffer
+
+//mwd - write data from regfile
+Xmwd rbdata[31:0] mwd[31:0] buffer
+
+XPC1 clk reset pcsel[2:0] xadr[31:0] illop[31:0] jt[31:0] id[15:0] ia[31:0] ia_plus4[31:0] ia_plus4_plusC[31:0] pc
+XREGFILE1 clk werf ra2sel wasel id[20:16] id[15:11] id[25:21] wdata[31:0] radata[31:0] rbdata[31:0] regfile
+XCTL1 reset z irq id[31:26] xpcsel[2:0] xwasel asel ra2sel bsel alufn[5:0] xwdsel[1:0] xwerf moe xwr ctl
+
+//Get Z and JT from RAdata
+Xget_Z 0 radata[31:0] 0#32 s[31:0] z v3 n3 adder32
+Xradata_con radata[31:0] jt[31:0] connector
+
+//Bit 31 of the branch-offset input to the ASEL mux should be set to 0- the supervisor bit is ignored
+Xaselmux asel#32 radata[31:0] 0 ia_plus4_plusC[30:0] inp_a[31:0] mux2 
+//Selector for B input - RBdata or SEXT(c)
+Xbselmux bsel#32 rbdata[31:0] id[15]#16 id[15:0] inp_b[31:0] mux2
+
+Xalu_out alufn[5:0] inp_a[31:0] inp_b[31:0] alu_out[31:0] z4 v4 n4 alu 
+
+//WDSEL = 0: PC+4 with Supervisor bit, 1: ALU output, 2: Memory read data
+Xwdselmux wdsel[1]#32 wdsel[0]#32 ia_plus4[31:0] mrd[31:0] alu_out[31:0] 0#32 wdata[31:0] mux4
+
+.ends
+

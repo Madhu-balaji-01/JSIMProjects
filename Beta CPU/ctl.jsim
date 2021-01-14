@@ -1,0 +1,99 @@
+//.include "/nominal.jsim"
+//.include "/stdcell.jsim"
+//.include "/lab5ctl.jsim"
+
+//CONTROL UNIT
+//Check for BEQ or BNE - OPCODE 011101 or 011110 and supervisor bit is zero
+.subckt check_if_beq_bne id[31:26] is_beq_bne 
+Xinv_sup id[31] inv_sup inverter
+Xcheck30_28 inv_sup id[30:28] is_111 and4
+Xcheck27_26 id[27:26] is_01_or_10 xor2
+Xcheckfinal is_111 is_01_or_10 is_beq_bne and2
+.ends
+
+.subckt ctl reset z irq id[31:26] pcsel[2:0] wasel asel ra2sel bsel alufn[5:0] wdsel[1:0] werf moe wr
+//Mux to force WR to 0 when RESET = 1
+Xwrmux reset xwr 0 wr mux2
+
+Xcheck_beq_bne id[31:26] is_beq_bne check_if_beq_bne
+Xnewpcsel z id[27] newpcsel xor2
+Xpcsel is_beq_bne#3 xpcsel[2:0] 0#2 newpcsel pcsel[2:0] mux2
+
+//This is a ROM to produce the required control signals based on the given OPCODE or id
+Xctl vdd 0 0 id[31:26]	    // one read port
++ xpcsel[2:0] wasel asel ra2sel bsel alufn[5:0] wdsel[1:0] werf moe xwr
++ $memory width=18 nlocations=64 contents=(
++ 	0b011100000000000100	// opcode = 0b000000
++ 	0b011100000000000100	// opcode = 0b000001
++ 	0b011100000000000100	// opcode = 0b000010
++ 	0b011100000000000100	// opcode = 0b000011
++ 	0b011100000000000100	// opcode = 0b000100
++ 	0b011100000000000100	// opcode = 0b000101
++ 	0b011100000000000100	// opcode = 0b000110
++ 	0b011100000000000100	// opcode = 0b000111
+
++ 	0b011100000000000100	// opcode = 0b001000
++ 	0b011100000000000100	// opcode = 0b001001
++ 	0b011100000000000100	// opcode = 0b001010
++ 	0b011100000000000100	// opcode = 0b001011
++ 	0b011100000000000100	// opcode = 0b001100
++ 	0b011100000000000100	// opcode = 0b001101
++ 	0b011100000000000100	// opcode = 0b001110
++ 	0b011100000000000100	// opcode = 0b001111
+
++ 	0b011100000000000100	// opcode = 0b010000
++ 	0b011100000000000100	// opcode = 0b010001
++ 	0b011100000000000100	// opcode = 0b010010
++ 	0b011100000000000100	// opcode = 0b010011
++ 	0b011100000000000100	// opcode = 0b010100
++ 	0b011100000000000100	// opcode = 0b010101
++ 	0b011100000000000100	// opcode = 0b010110
++	0b011100000000000100	// opcode = 0b010111
+
++	0b000000100000010110	// opcode = 0b011000 LD
++	0b000001100000000001	// opcode = 0b011001 ST
++	0b011100000000000100	// opcode = 0b011010
++	0b010000000000000100	// opcode = 0b011011 JMP
++	0b011100000000000100	// opcode = 0b011100
++	0b001000000000000100	// opcode = 0b011101 BEQ
++	0b000000000000000100 	// opcode = 0b011110 BNE
++	0b000010001101010110	// opcode = 0b011111 LDR
+
++	0b000000000000001100	// opcode = 0b100000 ADD
++	0b000000000000101100	// opcode = 0b100001 SUB
++	0b011100000000000100	// opcode = 0b100010 MUL
++	0b011100000000000100	// opcode = 0b100011 DIV
++	0b000000011001101100	// opcode = 0b100100 CMPEQ
++	0b000000011010101100	// opcode = 0b100101 CMPLT
++	0b000000011011101100	// opcode = 0b100110 CMPLE
++	0b011100000000000100	// opcode = 0b10011
+
++	0b000000001100001100	// opcode = 0b101000 AND
++	0b000000001111001100	// opcode = 0b101001 OR
++	0b000000001011001100	// opcode = 0b101010 XOR
++	0b011100000000000100	// opcode = 0b101011
++	0b000000010000001100	// opcode = 0b101100 SHL
++	0b000000010000101100	// opcode = 0b101101 SHR
++	0b000000010001101100	// opcode = 0b101110 SRA
++	0b011100000000000100	// opcode = 0b10111
+
++	0b000000100000001100	// opcode = 0b110000 ADDC
++	0b000000100000101100	// opcode = 0b110001 SUBC
++	0b011100000000000100	// opcode = 0b110010 MULC
++	0b011100000000000100	// opcode = 0b110011 DIVC
++	0b000000111001101100	// opcode = 0b110100 CMPEQC
++	0b000000111010101100	// opcode = 0b110101 CMPLTC
++	0b000000111011101100	// opcode = 0b110110 CMPLEC
++	0b011100000000000100	// opcode = 0b11011
+
++	0b000000101100001100	// opcode = 0b111000 ANDC
++	0b000000101111001100	// opcode = 0b111001 ORC
++	0b000000101011001100	// opcode = 0b111010 XORC
++	0b011100000000000100	// opcode = 0b111011
++	0b000000110000001100	// opcode = 0b111100 SHLC
++	0b000000110000101100	// opcode = 0b111101 SHRC
++	0b000000110001101100	// opcode = 0b111110 SRAC
++	0b011100000000000100	// opcode = 0b111111
++	)
+
+.ends

@@ -1,0 +1,35 @@
+.include "ALU.jsim"
+
+//PROGRAM COUNTER
+.subckt pc clk reset pcsel[2:0] xadr[31:0] illop[31:0] jt[31:0] c[15:0] ia[31:0] ia_plus4[31:0] ia_plus4_plusC[31:0]
+
+//Supervisor bit 
+Xsup ia[31] jt[31] new_pc31 and2
+
+//Requires a 5 way mux - use 1 4-way mux and then 1 2-way mux
+Xpc_mux4 pcsel[1]#32 pcsel[0]#32 ia_plus4[31:0] new_pc31 jt[30:2] 0#2 ia[31] ia_plus4_plusC[30:0] illop[31:0] mux4_out[31:0] mux4
+Xpc_mux2 pcsel[2]#32 mux4_out[31:0] xadr[31:0] pc_mux_out[31:0] mux2
+
+//Storing PC value in register
+Xstore pc_out[31:0] clk#32 ia[31:0] dreg
+
+//Creating const 4
+Xmake_4 0#29 vdd 0#2 four[31:0] connector
+
+//Calculating PC+4
+Xadd4 0 ia[31:0] four[31:0] xia_plus4[31:0] z1 v1 n1 adder32
+//No change to supervisor bit
+Xia_4_con ia[31] xia_plus4[30:0] ia_plus4[31:0] connector
+
+//Calculating PC+4+4*SEXT(C)
+Xia_4_C 0 ia_plus4[31:0] c[15]#14 c[15:0] 0#2 ia_plus4_plusC[31:0] z2 v2 n2 adder32
+//Xia_4C_con ia[31] xia_plus4_plusC[30:0] ia_plus4_plusC[31:0] connector
+
+//If reset = 1, PC = 0
+Xpcreset reset#32 pc_mux_out[31:0] vdd 0#31 pc_out[31:0] mux2
+
+.ends
+
+.subckt connector a b
+.connect a b
+.ends

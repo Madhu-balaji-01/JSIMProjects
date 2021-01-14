@@ -1,0 +1,204 @@
+//.include "/nominal.jsim"
+//.include "/stdcell.jsim"
+//.include "/lab3checkoff_6.jsim"
+//.include "/lab3checkoff_10.jsim"
+
+
+.subckt FA a b cin sum cout
+Xx1 a b int1 xor2
+Xx2 int1 cin sum xor2
+Xnx1 a b int2 nand2
+Xnx2 int1 cin int3 nand2
+Xnx3 int3 int2 cout nand2
+.ends
+
+.subckt adder32 ALUFN[0] A[31:0] B[31:0] s[31:0] z v n
+XxB B[31:0] ALUFN[0]#32 XB[31:0] xor2
+Xadder A[0] XB[0] ALUFN[0] s[0] cout[0] FA
+Xbody A[31:1] XB[31:1] cout[30:0] s[31:1] cout[31:1] FA
+
+Xn4 s[7:0] s[15:8] s[23:16] s[31:24] nor_out[7:0] nor4
+Xne4 nor_out[1:0] nor_out[3:2] nor_out[5:4] nor_out[7:6] and_out[1:0] and4 
+Xn2 and_out[0] and_out[1] Z and2
+
+Xc1 A[31] inv_a inverter
+Xc2 XB[31] inv_xb inverter
+Xc3 s[31] inv_s inverter
+Xc_1 A[31] XB[31] inv_s res_1 and3
+Xc_2 inv_a inv_xb s[31] res_2 and3
+Xcv res_1 res_2 V or2
+
+.connect s[31] N
+.ends
+
+.subckt compare32 ALUFN[2:1] z v n cmp[31:0]
+.connect cmp[31:1] 0
+Xint1 v n int1 xor2
+Xint2 int1 z int1_orz or2
+Xout ALUFN[2] ALUFN[1] 0 int1 z int1_orz cmp[0] mux4
+.ends
+
+.subckt boole32 ALUFN[3:0] A[31:0] B[31:0] boole[31:0]
+Xmuxes A[31:0] B[31:0] ALUFN0#32 ALUFN1#32 ALUFN2#32 ALUFN3#32 boole[31:0] mux4
+.ends
+
+.subckt shift32 ALUFN[1:0] A[31:0] B[4:0] shift[31:0]
+Xshiftleft1 B[4]#32 A[31:0] A[15:0] 0#16 LW[31:0] mux2
+Xshiftleft2 B[3]#32 LW[31:0] LW[23:0] 0#8 LX[31:0] mux2
+Xshiftleft3 B[2]#32 LX[31:0] LX[27:0] 0#4 LY[31:0] mux2
+Xshiftleft4 B[1]#32 LY[31:0] LY[29:0] 0#2 MLeveleft[31:0] mux2
+Xshiftleft5 B[0]#32 MLeveleft[31:0] MLeveleft[30:0] 0 SL[31:0] mux2
+
+Xshiftright_wo_arith1 B[4]#32 A[31:0] 0#16 A[31:16] RW[31:0] mux2
+Xshiftright_wo_arith2 B[3]#32 RW[31:0] 0#8 RW[31:8] RX[31:0] mux2
+Xshiftright_wo_arith3 B[2]#32 RX[31:0] 0#4 RX[31:4] RY[31:0] mux2
+Xshiftright_wo_arith4 B[1]#32 RY[31:0] 0#2 RY[31:2] RZ[31:0] mux2
+Xshiftright_wo_arith5 B[0]#32 RZ[31:0] 0 RZ[31:1] SR[31:0] mux2
+
+Xrightshifter1 B[4]#32 A[31:0] A[31]#16 A[31:16] W[31:0] mux2
+Xrightshifter2 B[3]#32 W[31:0] A[31]#8 W[31:8] X[31:0] mux2
+Xrightshifter3 B[2]#32 X[31:0] A[31]#4 X[31:4] Y[31:0] mux2
+Xrightshifter4 B[1]#32 Y[31:0] A[31]#2 Y[31:2] Z[31:0] mux2
+Xrightshifter5 B[0]#32 Z[31:0] A[31] Z[31:1] SRA[31:0] mux2
+
+Xmux4 ALUFN[0]#32 ALUFN[1]#32 SL[31:0] SR[31:0] 0#32 SRA[31:0] shift[31:0] mux4
+.ends
+
+.subckt mult ALUFN[5:0] A[31:0] B[31:0] OUT[31:0] 
+Xstage0s A[31:0] B[0]#32 MLevel0_[31:0] and2
+Xstage1s A[30:0] B[1]#31 MLevel1_[30:0] and2
+Xadder_stage1_first MLevel1_0 MLevel0_1 0 MLevelfa1_1 carry1_2 FA
+Xadder_stage1s MLevel1_[30:1] MLevel0_[31:2] carry1_[31:2] MLevelfa1_[31:2] carry1_[32:3] FA
+Xstage2s A[29:0] B[2]#30 MLevel2_[29:0] and2
+Xadder_stage2_first MLevel2_0 MLevelfa1_2 0 MLevelfa2_2 carry2_3 FA
+Xadder_stage2s MLevel2_[29:1] MLevelfa1_[31:3] carry2_[31:3] MLevelfa2_[31:3] carry2_[32:4] FA
+Xstage3s A[28:0] B[3]#29 MLevel3_[28:0] and2
+Xadder_stage3_first MLevel3_0 MLevelfa2_3 0 MLevelfa3_3 carry3_4 FA
+Xadder_stage3s MLevel3_[28:1] MLevelfa2_[31:4] carry3_[31:4] MLevelfa3_[31:4] carry3_[32:5] FA
+Xstage4s A[27:0] B[4]#28 MLevel4_[27:0] and2
+Xadder_stage4_first MLevel4_0 MLevelfa3_4 0 MLevelfa4_4 carry4_5 FA
+Xadder_stage4s MLevel4_[27:1] MLevelfa3_[31:5] carry4_[31:5] MLevelfa4_[31:5] carry4_[32:6] FA
+Xstage5s A[26:0] B[5]#27 MLevel5_[26:0] and2
+Xadder_stage5_first MLevel5_0 MLevelfa4_5 0 MLevelfa5_5 carry5_6 FA
+Xadder_stage5s MLevel5_[26:1] MLevelfa4_[31:6] carry5_[31:6] MLevelfa5_[31:6] carry5_[32:7] FA
+Xstage6s A[25:0] B[6]#26 MLevel6_[25:0] and2
+Xadder_stage6_first MLevel6_0 MLevelfa5_6 0 MLevelfa6_6 carry6_7 FA
+Xadder_stage6s MLevel6_[25:1] MLevelfa5_[31:7] carry6_[31:7] MLevelfa6_[31:7] carry6_[32:8] FA
+Xstage7s A[24:0] B[7]#25 MLevel7_[24:0] and2
+Xadder_stage7_first MLevel7_0 MLevelfa6_7 0 MLevelfa7_7 carry7_8 FA
+Xadder_stage7s MLevel7_[24:1] MLevelfa6_[31:8] carry7_[31:8] MLevelfa7_[31:8] carry7_[32:9] FA
+Xstage8s A[23:0] B[8]#24 MLevel8_[23:0] and2
+Xadder_stage8_first MLevel8_0 MLevelfa7_8 0 MLevelfa8_8 carry8_9 FA
+Xadder_stage8s MLevel8_[23:1] MLevelfa7_[31:9] carry8_[31:9] MLevelfa8_[31:9] carry8_[32:10] FA
+Xstage9s A[22:0] B[9]#23 MLevel9_[22:0] and2
+Xadder_stage9_first MLevel9_0 MLevelfa8_9 0 MLevelfa9_9 carry9_10 FA
+Xadder_stage9s MLevel9_[22:1] MLevelfa8_[31:10] carry9_[31:10] MLevelfa9_[31:10] carry9_[32:11] FA
+Xstage10s A[21:0] B[10]#22 MLevel10_[21:0] and2
+Xadder_stage10_first MLevel10_0 MLevelfa9_10 0 MLevelfa10_10 carry10_11 FA
+Xadder_stage10s MLevel10_[21:1] MLevelfa9_[31:11] carry10_[31:11] MLevelfa10_[31:11] carry10_[32:12] FA
+Xstage11s A[20:0] B[11]#21 MLevel11_[20:0] and2
+Xadder_stage11_first MLevel11_0 MLevelfa10_11 0 MLevelfa11_11 carry11_12 FA
+Xadder_stage11s MLevel11_[20:1] MLevelfa10_[31:12] carry11_[31:12] MLevelfa11_[31:12] carry11_[32:13] FA
+Xstage12s A[19:0] B[12]#20 MLevel12_[19:0] and2
+Xadder_stage12_first MLevel12_0 MLevelfa11_12 0 MLevelfa12_12 carry12_13 FA
+Xadder_stage12s MLevel12_[19:1] MLevelfa11_[31:13] carry12_[31:13] MLevelfa12_[31:13] carry12_[32:14] FA
+Xstage13s A[18:0] B[13]#19 MLevel13_[18:0] and2
+Xadder_stage13_first MLevel13_0 MLevelfa12_13 0 MLevelfa13_13 carry13_14 FA
+Xadder_stage13s MLevel13_[18:1] MLevelfa12_[31:14] carry13_[31:14] MLevelfa13_[31:14] carry13_[32:15] FA
+Xstage14s A[17:0] B[14]#18 MLevel14_[17:0] and2
+Xadder_stage14_first MLevel14_0 MLevelfa13_14 0 MLevelfa14_14 carry14_15 FA
+Xadder_stage14s MLevel14_[17:1] MLevelfa13_[31:15] carry14_[31:15] MLevelfa14_[31:15] carry14_[32:16] FA
+Xstage15s A[16:0] B[15]#17 MLevel15_[16:0] and2
+Xadder_stage15_first MLevel15_0 MLevelfa14_15 0 MLevelfa15_15 carry15_16 FA
+Xadder_stage15s MLevel15_[16:1] MLevelfa14_[31:16] carry15_[31:16] MLevelfa15_[31:16] carry15_[32:17] FA
+Xstage16s A[15:0] B[16]#16 MLevel16_[15:0] and2
+Xadder_stage16_first MLevel16_0 MLevelfa15_16 0 MLevelfa16_16 carry16_17 FA
+Xadder_stage16s MLevel16_[15:1] MLevelfa15_[31:17] carry16_[31:17] MLevelfa16_[31:17] carry16_[32:18] FA
+Xstage17s A[14:0] B[17]#15 MLevel17_[14:0] and2
+Xadder_stage17_first MLevel17_0 MLevelfa16_17 0 MLevelfa17_17 carry17_18 FA
+Xadder_stage17s MLevel17_[14:1] MLevelfa16_[31:18] carry17_[31:18] MLevelfa17_[31:18] carry17_[32:19] FA
+Xstage18s A[13:0] B[18]#14 MLevel18_[13:0] and2
+Xadder_stage18_first MLevel18_0 MLevelfa17_18 0 MLevelfa18_18 carry18_19 FA
+Xadder_stage18s MLevel18_[13:1] MLevelfa17_[31:19] carry18_[31:19] MLevelfa18_[31:19] carry18_[32:20] FA
+Xstage19s A[12:0] B[19]#13 MLevel19_[12:0] and2
+Xadder_stage19_first MLevel19_0 MLevelfa18_19 0 MLevelfa19_19 carry19_20 FA
+Xadder_stage19s MLevel19_[12:1] MLevelfa18_[31:20] carry19_[31:20] MLevelfa19_[31:20] carry19_[32:21] FA
+Xstage20s A[11:0] B[20]#12 MLevel20_[11:0] and2
+Xadder_stage20_first MLevel20_0 MLevelfa19_20 0 MLevelfa20_20 carry20_21 FA
+Xadder_stage20s MLevel20_[11:1] MLevelfa19_[31:21] carry20_[31:21] MLevelfa20_[31:21] carry20_[32:22] FA
+Xstage21s A[10:0] B[21]#11 MLevel21_[10:0] and2
+Xadder_stage21_first MLevel21_0 MLevelfa20_21 0 MLevelfa21_21 carry21_22 FA
+Xadder_stage21s MLevel21_[10:1] MLevelfa20_[31:22] carry21_[31:22] MLevelfa21_[31:22] carry21_[32:23] FA
+Xstage22s A[9:0] B[22]#10 MLevel22_[9:0] and2
+Xadder_stage22_first MLevel22_0 MLevelfa21_22 0 MLevelfa22_22 carry22_23 FA
+Xadder_stage22s MLevel22_[9:1] MLevelfa21_[31:23] carry22_[31:23] MLevelfa22_[31:23] carry22_[32:24] FA
+Xstage23s A[8:0] B[23]#9 MLevel23_[8:0] and2
+Xadder_stage23_first MLevel23_0 MLevelfa22_23 0 MLevelfa23_23 carry23_24 FA
+Xadder_stage23s MLevel23_[8:1] MLevelfa22_[31:24] carry23_[31:24] MLevelfa23_[31:24] carry23_[32:25] FA
+Xstage24s A[7:0] B[24]#8 MLevel24_[7:0] and2
+Xadder_stage24_first MLevel24_0 MLevelfa23_24 0 MLevelfa24_24 carry24_25 FA
+Xadder_stage24s MLevel24_[7:1] MLevelfa23_[31:25] carry24_[31:25] MLevelfa24_[31:25] carry24_[32:26] FA
+Xstage25s A[6:0] B[25]#7 MLevel25_[6:0] and2
+Xadder_stage25_first MLevel25_0 MLevelfa24_25 0 MLevelfa25_25 carry25_26 FA
+Xadder_stage25s MLevel25_[6:1] MLevelfa24_[31:26] carry25_[31:26] MLevelfa25_[31:26] carry25_[32:27] FA
+Xstage26s A[5:0] B[26]#6 MLevel26_[5:0] and2
+Xadder_stage26_first MLevel26_0 MLevelfa25_26 0 MLevelfa26_26 carry26_27 FA
+Xadder_stage26s MLevel26_[5:1] MLevelfa25_[31:27] carry26_[31:27] MLevelfa26_[31:27] carry26_[32:28] FA
+Xstage27s A[4:0] B[27]#5 MLevel27_[4:0] and2
+Xadder_stage27_first MLevel27_0 MLevelfa26_27 0 MLevelfa27_27 carry27_28 FA
+Xadder_stage27s MLevel27_[4:1] MLevelfa26_[31:28] carry27_[31:28] MLevelfa27_[31:28] carry27_[32:29] FA
+Xstage28s A[3:0] B[28]#4 MLevel28_[3:0] and2
+Xadder_stage28_first MLevel28_0 MLevelfa27_28 0 MLevelfa28_28 carry28_29 FA
+Xadder_stage28s MLevel28_[3:1] MLevelfa27_[31:29] carry28_[31:29] MLevelfa28_[31:29] carry28_[32:30] FA
+Xstage29s A[2:0] B[29]#3 MLevel29_[2:0] and2
+Xadder_stage29_first MLevel29_0 MLevelfa28_29 0 MLevelfa29_29 carry29_30 FA
+Xadder_stage29s MLevel29_[2:1] MLevelfa28_[31:30] carry29_[31:30] MLevelfa29_[31:30] carry29_[32:31] FA
+Xstage30s A[1:0] B[30]#2 MLevel30_[1:0] and2
+Xadder_stage30_first MLevel30_0 MLevelfa29_30 0 MLevelfa30_30 carry30_31 FA
+Xadder_stage30s MLevel30_[1:1] MLevelfa29_[31:31] carry30_[31:31] MLevelfa30_[31:31] carry30_[32:32] FA
+Xstage31s A[0] B[31]#1 MLevel31_[0] and2
+Xadder_stage31_first MLevel31_0 MLevelfa30_31 0 MLevelfa31_31 carry31_32 FA
+
+.connect MLevel0_0 OUT0
+.connect MLevelfa1_1 OUT1 
+.connect MLevelfa2_2 OUT2 
+.connect MLevelfa3_3 OUT3 
+.connect MLevelfa4_4 OUT4 
+.connect MLevelfa5_5 OUT5 
+.connect MLevelfa6_6 OUT6 
+.connect MLevelfa7_7 OUT7 
+.connect MLevelfa8_8 OUT8 
+.connect MLevelfa9_9 OUT9 
+.connect MLevelfa10_10 OUT10 
+.connect MLevelfa11_11 OUT11 
+.connect MLevelfa12_12 OUT12 
+.connect MLevelfa13_13 OUT13 
+.connect MLevelfa14_14 OUT14 
+.connect MLevelfa15_15 OUT15 
+.connect MLevelfa16_16 OUT16 
+.connect MLevelfa17_17 OUT17 
+.connect MLevelfa18_18 OUT18 
+.connect MLevelfa19_19 OUT19 
+.connect MLevelfa20_20 OUT20 
+.connect MLevelfa21_21 OUT21 
+.connect MLevelfa22_22 OUT22 
+.connect MLevelfa23_23 OUT23 
+.connect MLevelfa24_24 OUT24 
+.connect MLevelfa25_25 OUT25 
+.connect MLevelfa26_26 OUT26 
+.connect MLevelfa27_27 OUT27 
+.connect MLevelfa28_28 OUT28 
+.connect MLevelfa29_29 OUT29 
+.connect MLevelfa30_30 OUT30 
+.connect MLevelfa31_31 OUT31
+.ends    
+
+.subckt alu ALUFN[5:0] A[31:0] B[31:0] alu[31:0] z v n
+Xaddder ALUFN[0] A[31:0] B[31:0] s[31:0] z v n adder32
+Xcmp ALUFN[2:1] z v n cmp[31:0] compare32
+Xbool ALUFN[3:0] A[31:0] B[31:0] boole[31:0] boole32
+Xshift ALUFN[1:0] A[31:0] B[4:0] shift[31:0] shift32
+XMULT ALUFN[5:0] A[31:0] B[31:0] mul[31:0] mult
+Xaddmul ALUFN[1]#32 s[31:0] mul[31:0] addmul[31:0] mux2
+Xalu ALUFN[4]#32 ALUFN[5]#32 addmul[31:0] boole[31:0] shift[31:0] cmp[31:0] alu[31:0] mux4
+.ends
